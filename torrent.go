@@ -105,7 +105,7 @@ func (tor *Torrent) Validate() (bitf *bitfield.Bitfield, err error) {
 func (tor *Torrent) Close() {
   if tor.listener != nil {
     tor.listener.Close()
-    tor.listern = nil
+    tor.listener = nil
   }
   if tor.sam != nil {
     tor.sam.Close()
