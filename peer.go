@@ -9,7 +9,7 @@ import (
 
 type peer struct {
 	name           string
-	conn           io.ReadWriter
+	conn           io.ReadWriteCloser
 	write          chan binaryDumper
 	read           chan peerDouble
 	amChoking      bool
@@ -25,7 +25,7 @@ type peerDouble struct {
 	peer *peer
 }
 
-func newPeer(name string, conn io.ReadWriter, readChan chan peerDouble) (p *peer) {
+func newPeer(name string, conn io.ReadWriteCloser, readChan chan peerDouble) (p *peer) {
 	p = &peer{
 		name:           name,
 		conn:           conn,
@@ -46,6 +46,7 @@ func newPeer(name string, conn io.ReadWriter, readChan chan peerDouble) (p *peer
 			if err := msg.BinaryDump(conn); err != nil {
 				// TODO: Close peer
 				logger.Error("%s Received error writing to connection: %s", p.name, err)
+        p.conn.Close()
 				return
 			}
 		}
@@ -63,6 +64,7 @@ func newPeer(name string, conn io.ReadWriter, readChan chan peerDouble) (p *peer
 			} else if err != nil {
 				// TODO: Close peer
 				logger.Debug("%s Received error reading connection: %s", p.name, err)
+        p.conn.Close()
 				break
 			}
 			readChan <- peerDouble{msg: msg, peer: p}

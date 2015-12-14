@@ -229,7 +229,7 @@ func (tor *Torrent) Start() {
         logger.Debug("Peer %s has asked for a block (%d, %d, %d), going to fetch block", peer.name, msg.pieceIndex, msg.blockOffset, msg.blockLength)
         block, err := tor.fileStore.GetBlock(int(msg.pieceIndex), int64(msg.blockOffset), int64(msg.blockLength))
         if err != nil {
-          logger.Error(err.Error())
+          logger.Error(err.Error())          
           break
         }
         logger.Debug("Peer %s has asked for a block (%d, %d, %d), sending it to them", peer.name, msg.pieceIndex, msg.blockOffset, msg.blockLength)
