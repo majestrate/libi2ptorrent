@@ -151,7 +151,6 @@ func (tor *Torrent) Start() {
         conn, err := tor.sam.Dial("tcp", peerAddr.String()+":0")
         if err != nil {
           logger.Debug("Failed to connect to tracker peer address %s: %s", peerAddr, err)
-          conn.Close()
           return
         }
         tor.AddPeer(conn, nil)
