@@ -24,7 +24,6 @@ const (
 )
 
 var logger = logging.MustGetLogger("libtorrent")
-var PeerId = []byte(fmt.Sprintf("li2pt-%d%d%d%d",rand.Int63(), rand.Int63(), rand.Int63(), rand.Int63()))[:20]
 
 type Torrent struct {
   sam              *i2p.StreamSession
@@ -41,10 +40,12 @@ type Torrent struct {
   trackers         []*tracker.Tracker
   state            int
   stateLock        sync.Mutex
+  peerID           []byte
 }
 
 func NewTorrent(m *metainfo.Metainfo, config *Config, bitf *bitfield.Bitfield) (tor *Torrent, err error) {
   tor = &Torrent{
+    peerID:           []byte(fmt.Sprintf("li2pt-%d%d%d%d",rand.Int63(), rand.Int63(), rand.Int63(), rand.Int63()))[:20],
     config:           config,
     meta:             m,
     incomingPeer:     make(chan *peer, 100),
@@ -280,7 +281,7 @@ func (t *Torrent) AddPeer(conn net.Conn, hs *handshake) {
   conn.SetDeadline(time.Now().Add(time.Minute))
 
   // Send handshake
-  if err := newHandshake(t.InfoHash()).BinaryDump(conn); err != nil {
+  if err := newHandshake(t.InfoHash(), t.PeerId()).BinaryDump(conn); err != nil {
     logger.Debug("%s Failed to send handshake to connection: %s", conn.RemoteAddr(), err)
     return
   }
@@ -322,5 +323,5 @@ func (t *Torrent) Left() int64 {
 
 
 func (t *Torrent) PeerId() []byte {
-  return PeerId
+  return t.peerID
 }

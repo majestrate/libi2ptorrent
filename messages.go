@@ -32,11 +32,11 @@ type handshake struct {
 	peerId   []byte
 }
 
-func newHandshake(infoHash []byte) (hs *handshake) {
+func newHandshake(infoHash, peerID []byte) (hs *handshake) {
 	hs = &handshake{
 		protocol: []byte("BitTorrent protocol"),
 		infoHash: infoHash,
-		peerId:   PeerId,
+		peerId:   peerID,
 	}
 	return
 }
