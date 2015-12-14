@@ -151,6 +151,7 @@ func (tor *Torrent) Start() {
         conn, err := tor.sam.Dial("tcp", peerAddr.String()+":0")
         if err != nil {
           logger.Debug("Failed to connect to tracker peer address %s: %s", peerAddr, err)
+          conn.Close()
           return
         }
         tor.AddPeer(conn, nil)
@@ -283,6 +284,7 @@ func (t *Torrent) AddPeer(conn net.Conn, hs *handshake) {
   // Send handshake
   if err := newHandshake(t.InfoHash(), t.PeerId()).BinaryDump(conn); err != nil {
     logger.Debug("%s Failed to send handshake to connection: %s", conn.RemoteAddr(), err)
+    conn.Close()
     return
   }
 
@@ -292,9 +294,11 @@ func (t *Torrent) AddPeer(conn net.Conn, hs *handshake) {
   if hs == nil {
     if hs, err = parseHandshake(conn); err != nil {
       logger.Debug("%s Failed to parse incoming handshake: %s", conn.RemoteAddr(), err)
+      conn.Close()
       return
     } else if !bytes.Equal(hs.infoHash, t.InfoHash()) {
       logger.Debug("%s Infohash did not match for connection", conn.RemoteAddr())
+      conn.Close()
       return
     }
   }
