@@ -102,14 +102,32 @@ func (tor *Torrent) Validate() (bitf *bitfield.Bitfield, err error) {
   return
 }
 
-func (tor *Torrent) Start() {
-  logger.Info("Torrent starting: %s", tor.meta.Name)
-  err := tor.Connect()
-  if err != nil {
-    // failed to connect
-    logger.Error("Failed to connect to i2p router: %s", err)
-    return
+func (tor *Torrent) Close() {
+  if tor.listener != nil {
+    tor.listener.Close()
+    tor.listern = nil
   }
+  if tor.sam != nil {
+    tor.sam.Close()
+    tor.sam = nil
+  }
+}
+
+func (tor *Torrent) Start() {
+  var err error
+  for {
+    err = tor.Connect()
+    if err == nil {
+      break
+    } else {
+      // failed to connect
+      logger.Error("Failed to connect to i2p router: %s", err)
+      tor.Close()
+      time.Sleep(time.Second)
+    }
+  }
+  logger.Info("Torrent starting: %s", tor.meta.Name)
+  
   // Set initial state
   tor.stateLock.Lock()
   if tor.bitf.SumTrue() == tor.bitf.Length() {
@@ -124,6 +142,7 @@ func (tor *Torrent) Start() {
     err := tor.listener.Listen()
     if err != nil {
       logger.Error("failed to listen: %s", err.Error())
+      tor.Close()
     }
   }()
   
@@ -149,11 +168,11 @@ func (tor *Torrent) Start() {
       logger.Info("connecting out to %s", peerAddr)
       go func() {
         conn, err := tor.sam.Dial("tcp", peerAddr.String()+":0")
-        if err != nil {
+        if err == nil {
+          tor.AddPeer(conn, nil)
+        } else {
           logger.Debug("Failed to connect to tracker peer address %s: %s", peerAddr, err)
-          return
         }
-        tor.AddPeer(conn, nil)
       }()
     }
   }()
@@ -227,7 +246,7 @@ func (tor *Torrent) Start() {
         peer.SetBitfield(msg.bitf)
         tor.swarmTally.AddBitfield(msg.bitf)
       case *requestMessage:
-        if peer.GetAmChoking() || !tor.bitf.Get(int(msg.pieceIndex)) || msg.blockLength > 32768 {
+        if peer.GetAmChoking() || !tor.bitf.Get(int(msg.pieceIndex)) {
           logger.Debug("Peer %s has asked for a block (%d, %d, %d), but we are rejecting them", peer.name, msg.pieceIndex, msg.blockOffset, msg.blockLength)
           // Add naughty points
           break
