@@ -29,7 +29,7 @@ func LoadConfig(fname string) (cfg *Config, err error) {
 
 var DefaultConfig = &Config{
   RootDirectory: ".",
-  NumSeeders: 10,
+  NumSeeders: 1,
   I2P: i2p.Config{
     Addr: "127.0.0.1:7656",
     Session: "bulkseeder",
