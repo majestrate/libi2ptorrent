@@ -46,7 +46,7 @@ func parseHandshake(r io.Reader) (hs *handshake, err error) {
 	hs = new(handshake)
 
 	// Name length
-	_, err = r.Read(buf[0:1])
+	_, err = io.ReadFull(r, buf[0:1])
 	if err != nil {
 		return
 	} else if int(buf[0]) != 19 {
@@ -55,7 +55,7 @@ func parseHandshake(r io.Reader) (hs *handshake, err error) {
 	}
 
 	// Protocol
-	_, err = r.Read(buf[0:19])
+	_, err = io.ReadFull(r, buf[0:19])
 	if err != nil {
 		return
 	} else if !bytes.Equal(buf[0:19], []byte("BitTorrent protocol")) {
@@ -64,20 +64,20 @@ func parseHandshake(r io.Reader) (hs *handshake, err error) {
 	hs.protocol = append(hs.protocol, buf[0:19]...)
 
 	// Skip reserved bytes
-	_, err = r.Read(buf[0:8])
+	_, err = io.ReadFull(r, buf[0:8])
 	if err != nil {
 		return
 	}
 
 	// Info Hash
-	_, err = r.Read(buf)
+	_, err = io.ReadFull(r, buf)
 	if err != nil {
 		return
 	}
 	hs.infoHash = append(hs.infoHash, buf...)
 
 	// PeerID
-	_, err = r.Read(buf)
+	_, err = io.ReadFull(r, buf)
 	if err != nil {
 		return
 	}

@@ -186,8 +186,11 @@ func (tor *Torrent) Start() {
       peerDouble := <-tor.readChan
       peer := peerDouble.peer
       msg := peerDouble.msg
+      if peer == nil {
+        continue
+      }
       if msg == nil {
-        logger.Debug("peer %s nil message", peer.name)
+        continue
       }
       switch msg := msg.(type) {
       case *chokeMessage:
@@ -207,6 +210,7 @@ func (tor *Torrent) Start() {
         if pieceIndex >= tor.meta.PieceCount {
           logger.Debug("Peer %s sent an out of range have message")
           // TODO: Shutdown client
+          peer.Close()
         }
         peer.HasPiece(pieceIndex)
         // TODO: Update swarmTally
@@ -216,6 +220,7 @@ func (tor *Torrent) Start() {
         if err := msg.bitf.SetLength(tor.meta.PieceCount); err != nil {
           logger.Error(err.Error())
           // TODO: Shutdown client
+          peer.Close()
           break
         }
         peer.SetBitfield(msg.bitf)
@@ -229,7 +234,8 @@ func (tor *Torrent) Start() {
         logger.Debug("Peer %s has asked for a block (%d, %d, %d), going to fetch block", peer.name, msg.pieceIndex, msg.blockOffset, msg.blockLength)
         block, err := tor.fileStore.GetBlock(int(msg.pieceIndex), int64(msg.blockOffset), int64(msg.blockLength))
         if err != nil {
-          logger.Error(err.Error())          
+          logger.Error(err.Error())
+          peer.Close()
           break
         }
         logger.Debug("Peer %s has asked for a block (%d, %d, %d), sending it to them", peer.name, msg.pieceIndex, msg.blockOffset, msg.blockLength)
