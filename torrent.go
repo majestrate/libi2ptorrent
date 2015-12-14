@@ -300,8 +300,10 @@ func (t *Torrent) AddPeer(conn net.Conn, hs *handshake) {
   }
 
   peer := newPeer(string(hs.peerId), conn, t.readChan)
-  peer.write <- &bitfieldMessage{bitf: t.bitf}
-  t.incomingPeer <- peer
+  if peer.write != nil {
+    peer.write <- &bitfieldMessage{bitf: t.bitf}
+    t.incomingPeer <- peer
+  }
 
   conn.SetDeadline(time.Time{})
 }

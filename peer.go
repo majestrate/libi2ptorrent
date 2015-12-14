@@ -134,10 +134,5 @@ func (p *peer) Close() {
     p.write = nil
     close(c)
   }
-  if p.read != nil {
-    c := p.read
-    p.read = nil
-    close(c)
-  }
   p.conn.Close()
 }
