@@ -1,14 +1,14 @@
 {
   /* number of seeding peers to start up */
-	"NumSeeders" : 5,
+  "NumSeeders" : 5,
   /* root directory for torrents */
-	"RootDirectory" : "/mnt/disk/torrents/",
+  "RootDirectory" : "/mnt/disk/torrents/",
   /* i2p options */
-	"I2P" : {
+  "I2P" : {
     /* base name of sam session */
-		"Session" : "bulkseeder",
+    "Session" : "bulkseeder",
     /* change this to where SAM is located if it's at a non standard address */
-		"Addr": "127.0.0.1:7656",
+    "Addr": "127.0.0.1:7656",
     /* sam session options */
     "Opts" : {
       "outbound.quantity" : "6",
@@ -16,5 +16,5 @@
       "outbound.length" : "1",
       "inbound.length" : "1"
     }
-	}
+  }
 }
