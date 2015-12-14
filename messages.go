@@ -1,11 +1,11 @@
-package libtorrent
+package libi2ptorrent
 
 import (
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/torrance/libtorrent/bitfield"
+	"github.com/majestrate/libi2ptorrent/bitfield"
 	"io"
 	"io/ioutil"
 )
@@ -110,10 +110,6 @@ func parsePeerMessage(r io.Reader) (msg interface{}, err error) {
 	} else if length == 0 {
 		// Keepalive message
 		return
-	} else if length > 131072 {
-		// Set limit at 2^17. Might need to revise this later
-		err = errors.New(fmt.Sprintf("Message size too long: %d", length))
-		return
 	}
 
 	// Read message id (1 byte)
@@ -122,6 +118,7 @@ func parsePeerMessage(r io.Reader) (msg interface{}, err error) {
 	if err != nil {
 		return
 	} else if id > Cancel {
+    logger.Debug("invalid message id %d", id)
 		// Return error on unknown messages
 		discard := make([]byte, length-1)
 		_, err = r.Read(discard)
@@ -148,6 +145,8 @@ func parsePeerMessage(r io.Reader) (msg interface{}, err error) {
 		return parseUnchokeMessage(payloadReader)
 	case Interested:
 		return parseInterestedMessage(payloadReader)
+  case Uninterested:
+    return parseUninterestedMessage(payloadReader)
 	case Have:
 		return parseHaveMessage(payloadReader)
 	case Bitfield:
@@ -156,6 +155,8 @@ func parsePeerMessage(r io.Reader) (msg interface{}, err error) {
 		return parseRequestMessage(payloadReader)
 	case Piece:
 		return parsePieceMessage(payloadReader)
+  default:
+    err = unknownMessage{id: id, length: length}
 	}
 
 	return
@@ -194,6 +195,13 @@ type interestedMessage struct{}
 func parseInterestedMessage(r io.Reader) (msg *interestedMessage, err error) {
 	msg = new(interestedMessage)
 	return
+}
+
+type uninterestedMessage struct{}
+
+func parseUninterestedMessage(r io.Reader) (msg *uninterestedMessage, err error) {
+  msg = new(uninterestedMessage)
+  return
 }
 
 func (msg *interestedMessage) BinaryDump(w io.Writer) error {

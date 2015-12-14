@@ -5,7 +5,7 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
-	"github.com/torrance/libtorrent/bitfield"
+	"github.com/majestrate/libi2ptorrent/bitfield"
 	"io"
 	"os"
 	"path/filepath"

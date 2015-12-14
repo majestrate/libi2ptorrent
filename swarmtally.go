@@ -1,9 +1,9 @@
-package libtorrent
+package libi2ptorrent
 
 import (
 	"errors"
 	"fmt"
-	"github.com/torrance/libtorrent/bitfield"
+	"github.com/majestrate/libi2ptorrent/bitfield"
 )
 
 type swarmTally []int

@@ -1,7 +1,7 @@
-package libtorrent
+package libi2ptorrent
 
 import (
-	"github.com/torrance/libtorrent/bitfield"
+	"github.com/majestrate/libi2ptorrent/bitfield"
 	"io"
 	"sync"
 	//"testing/iotest"

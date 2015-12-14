@@ -1,4 +1,4 @@
-package libtorrent
+package libi2ptorrent
 
 // import (
 // 	//"bytes"
