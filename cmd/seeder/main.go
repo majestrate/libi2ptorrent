@@ -68,7 +68,10 @@ func main() {
             // spawn more
             t, err = libtorrent.NewTorrent(meta, cfg, bitf)
             if err == nil {
-              t.Start()
+              logger.Info("starting worker %d for %s", num, meta.Name)
+              go func() {
+                t.Start()
+              }()
             } else {
               logger.Error("Failed to start worker number %d: %s", num, err.Error())
             }
