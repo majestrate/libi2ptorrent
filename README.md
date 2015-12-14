@@ -1,6 +1,6 @@
 # libi2ptorrent
 
-i2p torrent library in go
+i2p torrent library in go based on [libtorrent](https://github.com/torrance/libtorrent)
 
 under development
 
