@@ -10,7 +10,8 @@ seed only bittorrent client:
 
 building:
 
-    go build -u github.com/majestrate/libi2ptorrent/cmd/seeder
+    go get -u github.com/majestrate/libi2ptorrent/cmd/seeder
+    go build github.com/majestrate/libi2ptorrent/cmd/seeder
 
 running:
 
