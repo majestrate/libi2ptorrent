@@ -172,8 +172,8 @@ func (tkr *Tracker) httpAnnounce(req *Request) (resp *Response, err error) {
 	r, err = cl.Get(req.buildURL(tkr.url))
 	if err == nil {
 		resp, err = readAnnounceResponse(r.Body)
+		r.Body.Close()
 	}
-	r.Body.Close()
 	return
 }
 

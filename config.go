@@ -7,7 +7,7 @@ import (
 )
 
 type I2PConfig struct {
-	Addr string
+	Addr    string
 	Keyfile string
 }
 
