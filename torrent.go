@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/base32"
 	"fmt"
-	i2p "github.com/majestrate/i2p-tools/sam3"
+	"github.com/majestrate/i2p-tools/lib/i2p"
 	"github.com/majestrate/libi2ptorrent/bitfield"
 	"github.com/majestrate/libi2ptorrent/filestore"
 	"github.com/majestrate/libi2ptorrent/metainfo"
@@ -26,7 +26,7 @@ const (
 var logger = logging.MustGetLogger("libtorrent")
 
 type Torrent struct {
-	sam              *i2p.StreamSession
+	sam              i2p.Session
 	listener         *Listener
 	meta             *metainfo.Metainfo
 	fileStore        *filestore.FileStore
@@ -80,17 +80,13 @@ func (tor *Torrent) Connect() (err error) {
 
 	cfg := tor.config.I2P
 	session := strings.Trim(base32.StdEncoding.EncodeToString(tor.meta.InfoHash), "=")
-	cfg.Keyfile = ""
-	cfg.Session += "-"
-	cfg.Session += strings.ToLower(session[:10])
-	cfg.Session += fmt.Sprintf("-%d", rand.Int63())
-	logger.Info("connecting to i2p with session %s", cfg.Session)
-	tor.sam, err = cfg.StreamSession()
+	session += strings.ToLower(session[:10])
+	session += fmt.Sprintf("-%d", rand.Int63())
+	logger.Info("connecting to i2p with session %s", session)
+	tor.sam, err = i2p.NewSessionEasy(cfg.Addr, "")
 	if err == nil {
-		var listener net.Listener
-		listener, err = tor.sam.Listen()
 		if err == nil {
-			tor.listener = NewListener(listener)
+			tor.listener = NewListener(tor.sam)
 			tor.listener.AddTorrent(tor)
 		}
 	}

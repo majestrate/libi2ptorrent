@@ -2,15 +2,19 @@ package libi2ptorrent
 
 import (
 	"encoding/json"
-	i2p "github.com/majestrate/i2p-tools/sam3"
 	"io/ioutil"
 	"path/filepath"
 )
 
+type I2PConfig struct {
+	Addr string
+	Keyfile string
+}
+
 type Config struct {
 	RootDirectory string
 	NumSeeders    int
-	I2P           i2p.Config
+	I2P           I2PConfig
 }
 
 func (cfg *Config) ListTorrents() (torrentFiles []string, err error) {
@@ -30,13 +34,8 @@ func LoadConfig(fname string) (cfg *Config, err error) {
 var DefaultConfig = &Config{
 	RootDirectory: ".",
 	NumSeeders:    1,
-	I2P: i2p.Config{
+	I2P: I2PConfig{
 		Addr:    "127.0.0.1:7656",
-		Session: "bulkseeder",
 		Keyfile: "",
-		Opts: map[string]string{
-			"inbound.quantity":  "8",
-			"outbound.quantity": "8",
-		},
 	},
 }

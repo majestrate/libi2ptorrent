@@ -3,7 +3,7 @@ package tracker
 import (
 	"errors"
 	"fmt"
-	i2p "github.com/majestrate/i2p-tools/sam3"
+	"github.com/majestrate/i2p-tools/lib/i2p"
 	"github.com/op/go-logging"
 	"github.com/zeebo/bencode"
 	"io"
@@ -32,7 +32,7 @@ type TorrentStatter interface {
 type DialFunc func(net, addr string) (net.Conn, error)
 
 type Tracker struct {
-	sam          *i2p.StreamSession
+	sam          i2p.Session
 	transport    *http.Transport
 	url          *url.URL
 	stat         TorrentStatter
@@ -43,7 +43,7 @@ type Tracker struct {
 	announce     chan struct{} // Used to force an announce
 }
 
-func NewTracker(s *i2p.StreamSession, address string, stat TorrentStatter, peerChan chan i2p.I2PDestHash) (trk *Tracker, err error) {
+func NewTracker(s i2p.Session, address string, stat TorrentStatter, peerChan chan i2p.I2PDestHash) (trk *Tracker, err error) {
 	// Verify valid http / or udp address
 	url, err := url.Parse(address)
 	if err != nil {
@@ -123,7 +123,6 @@ func (tkr *Tracker) Start() {
 				tkr.n++
 				continue
 			}
-
 			peers, err := extractPeers(annRes.Peers)
 			if err == nil {
 				// Success!
@@ -174,6 +173,7 @@ func (tkr *Tracker) httpAnnounce(req *Request) (resp *Response, err error) {
 	if err == nil {
 		resp, err = readAnnounceResponse(r.Body)
 	}
+	r.Body.Close()
 	return
 }
 
