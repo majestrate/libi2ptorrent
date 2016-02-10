@@ -118,7 +118,7 @@ func parsePeerMessage(r io.Reader) (msg interface{}, err error) {
 	if err != nil {
 		return
 	} else if id > Cancel {
-    logger.Debug("invalid message id %d", id)
+		logger.Debug("invalid message id %d", id)
 		// Return error on unknown messages
 		discard := make([]byte, length-1)
 		_, err = r.Read(discard)
@@ -145,8 +145,8 @@ func parsePeerMessage(r io.Reader) (msg interface{}, err error) {
 		return parseUnchokeMessage(payloadReader)
 	case Interested:
 		return parseInterestedMessage(payloadReader)
-  case Uninterested:
-    return parseUninterestedMessage(payloadReader)
+	case Uninterested:
+		return parseUninterestedMessage(payloadReader)
 	case Have:
 		return parseHaveMessage(payloadReader)
 	case Bitfield:
@@ -155,8 +155,8 @@ func parsePeerMessage(r io.Reader) (msg interface{}, err error) {
 		return parseRequestMessage(payloadReader)
 	case Piece:
 		return parsePieceMessage(payloadReader)
-  default:
-    err = unknownMessage{id: id, length: length}
+	default:
+		err = unknownMessage{id: id, length: length}
 	}
 
 	return
@@ -200,8 +200,8 @@ func parseInterestedMessage(r io.Reader) (msg *interestedMessage, err error) {
 type uninterestedMessage struct{}
 
 func parseUninterestedMessage(r io.Reader) (msg *uninterestedMessage, err error) {
-  msg = new(uninterestedMessage)
-  return
+	msg = new(uninterestedMessage)
+	return
 }
 
 func (msg *interestedMessage) BinaryDump(w io.Writer) error {

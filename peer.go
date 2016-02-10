@@ -4,7 +4,7 @@ import (
 	"github.com/majestrate/libi2ptorrent/bitfield"
 	"io"
 	"sync"
-  "time"
+	"time"
 	//"testing/iotest"
 )
 
@@ -43,21 +43,21 @@ func newPeer(name string, conn io.ReadWriteCloser, readChan chan peerDouble) (p 
 		for {
 			//conn := iotest.NewWriteLogger("Writing", conn)
 			// TODO: send regular keep alive requests
-      if p.write == nil {
-        return
-      }
+			if p.write == nil {
+				return
+			}
 			msg, ok := <-p.write
-      if ok {
-        if err := msg.BinaryDump(conn); err != nil {
-          // TODO: Close peer
-          logger.Error("%s Received error writing to connection: %s", p.name, err)
-          p.Close()
-          return
-        }
-      } else {
-        p.Close()
-        return
-      }
+			if ok {
+				if err := msg.BinaryDump(conn); err != nil {
+					// TODO: Close peer
+					logger.Error("%s Received error writing to connection: %s", p.name, err)
+					p.Close()
+					return
+				}
+			} else {
+				p.Close()
+				return
+			}
 		}
 	}()
 
@@ -72,11 +72,11 @@ func newPeer(name string, conn io.ReadWriteCloser, readChan chan peerDouble) (p 
 				logger.Info(err.Error())
 			} else if err != nil {
 				logger.Debug("%s Received error reading connection: %s", p.name, err)
-        p.Close()
-        return
+				p.Close()
+				return
 			} else if p.read != nil {
-        p.read <- peerDouble{msg: msg, peer: p}
-      }
+				p.read <- peerDouble{msg: msg, peer: p}
+			}
 		}
 	}()
 
@@ -128,11 +128,11 @@ func (p *peer) HasPiece(index int) {
 }
 
 func (p *peer) Close() {
-  time.Sleep(1000)
-  if p.write != nil {
-    c := p.write
-    p.write = nil
-    close(c)
-  }
-  p.conn.Close()
+	time.Sleep(1000)
+	if p.write != nil {
+		c := p.write
+		p.write = nil
+		close(c)
+	}
+	p.conn.Close()
 }
