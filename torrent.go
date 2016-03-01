@@ -26,7 +26,7 @@ const (
 var logger = logging.MustGetLogger("libtorrent")
 
 type Torrent struct {
-	sam              i2p.Session
+	sam              i2p.StreamSession
 	listener         *Listener
 	meta             *metainfo.Metainfo
 	fileStore        *filestore.FileStore

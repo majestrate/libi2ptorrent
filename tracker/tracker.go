@@ -32,7 +32,7 @@ type TorrentStatter interface {
 type DialFunc func(net, addr string) (net.Conn, error)
 
 type Tracker struct {
-	sam          i2p.Session
+	sam          i2p.StreamSession
 	transport    *http.Transport
 	url          *url.URL
 	stat         TorrentStatter
@@ -43,7 +43,7 @@ type Tracker struct {
 	announce     chan struct{} // Used to force an announce
 }
 
-func NewTracker(s i2p.Session, address string, stat TorrentStatter, peerChan chan i2p.I2PDestHash) (trk *Tracker, err error) {
+func NewTracker(s i2p.StreamSession, address string, stat TorrentStatter, peerChan chan i2p.I2PDestHash) (trk *Tracker, err error) {
 	// Verify valid http / or udp address
 	url, err := url.Parse(address)
 	if err != nil {
