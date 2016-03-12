@@ -117,7 +117,7 @@ func (tkr *Tracker) Start() {
 			}
 			annRes, err := tkr.httpAnnounce(annReq)
 			if err != nil {
-				logger.Info("Failed to contact tracker %s, error: %s", tkr.url, err)
+				logger.Infof("Failed to contact tracker %s, error: %s", tkr.url, err)
 				// Attempt again using a backoff pattern 60*2^n
 				tkr.nextAnnounce = time.Second * 60 * time.Duration(1<<tkr.n)
 				tkr.n++
@@ -126,7 +126,7 @@ func (tkr *Tracker) Start() {
 			peers, err := extractPeers(annRes.Peers)
 			if err == nil {
 				// Success!
-				logger.Info("Got %d peers from tracker %s. Next announce in %d seconds", len(peers), tkr.url, annRes.Interval)
+				logger.Infof("Got %d peers from tracker %s. Next announce in %d seconds", len(peers), tkr.url, annRes.Interval)
 				if annRes.Interval == 0 {
 					annRes.Interval = 60
 				}
@@ -136,7 +136,7 @@ func (tkr *Tracker) Start() {
 					tkr.peerChan <- peer
 				}
 			} else {
-				logger.Error("invalid response from tracker %s: %s", tkr.url, err.Error())
+				logger.Errorf("invalid response from tracker %s: %s", tkr.url, err.Error())
 			}
 		}
 

@@ -21,7 +21,7 @@ const (
 	Seeding
 )
 
-var logger = logging.MustGetLogger("torrent")
+var logger = logging.MustGetLogger("libtorrent")
 
 type Torrent struct {
 	sam              i2p.StreamSession
@@ -40,7 +40,7 @@ type Torrent struct {
 	peerID           []byte
 }
 
-func NewTorrent(m *metainfo.Metainfo, config *Config, bitf *bitfield.Bitfield) (tor *Torrent, err error) {
+func NewTorrent(m *metainfo.Metainfo, config *Config) (tor *Torrent, err error) {
 	tor = &Torrent{
 		peerID:           []byte(fmt.Sprintf("li2pt-%d%d%d%d", rand.Int63(), rand.Int63(), rand.Int63(), rand.Int63()))[:20],
 		config:           config,
@@ -55,7 +55,7 @@ func NewTorrent(m *metainfo.Metainfo, config *Config, bitf *bitfield.Bitfield) (
 	var tfile filestore.TorrentStorer
 	for _, file := range tor.meta.Files {
 		if tfile, err = filestore.NewTorrentFile(tor.config.RootDirectory, file.Path, file.Length); err != nil {
-			logger.Error("Failed to create file %s: %s", file.Path, err)
+			logger.Errorf("Failed to create file %s: %s", file.Path, err)
 			return
 		}
 		tfiles = append(tfiles, tfile)
@@ -63,12 +63,12 @@ func NewTorrent(m *metainfo.Metainfo, config *Config, bitf *bitfield.Bitfield) (
 
 	// Now we can create our filestore.
 	if tor.fileStore, err = filestore.NewFileStore(tfiles, tor.meta.Pieces, tor.meta.PieceLength); err != nil {
-		logger.Error("Failed to create filestore: %s", err)
+		logger.Errorf("Failed to create filestore: %s", err)
 		return
 	}
 
-	// given from external validation
-	tor.bitf = bitf
+	// validating torrents
+	tor.bitf, err = tor.fileStore.Validate()
 
 	return
 }
@@ -89,7 +89,7 @@ func (tor *Torrent) Close() {
 }
 
 func (tor *Torrent) Start() {
-	logger.Info("Torrent starting: %s", tor.meta.Name)
+	logger.Infof("Torrent starting: %s", tor.meta.Name)
 	// Set initial state
 	tor.stateLock.Lock()
 	if tor.bitf.SumTrue() == tor.bitf.Length() {
@@ -102,7 +102,7 @@ func (tor *Torrent) Start() {
 	for _, tkr := range tor.meta.AnnounceList {
 		tkr, err := tracker.NewTracker(tor.sam, tkr, tor, tor.incomingPeerAddr)
 		if err != nil {
-			logger.Error("Failed to create tracker: %s", err)
+			logger.Errorf("Failed to create tracker: %s", err)
 			continue
 		}
 		tor.trackers = append(tor.trackers, tkr)
@@ -117,13 +117,13 @@ func (tor *Torrent) Start() {
 			//if tor.state != Leeching {
 			//  continue
 			//}
-			logger.Debug("connecting out to %s", peerAddr)
+			logger.Debugf("connecting out to %s", peerAddr)
 			go func() {
 				conn, err := tor.sam.Dial("tcp", peerAddr.String()+":0")
 				if err == nil {
 					tor.AddPeer(conn, nil)
 				} else {
-					logger.Debug("Failed to connect to tracker peer address %s: %s", peerAddr, err)
+					logger.Debugf("Failed to connect to tracker peer address %s: %s", peerAddr, err)
 				}
 			}()
 		}
@@ -135,7 +135,7 @@ func (tor *Torrent) Start() {
 			select {
 			case peer := <-tor.incomingPeer:
 				// Add to swarm slice
-				logger.Debug("Connected to new peer: %s", peer.name)
+				logger.Debugf("Connected to new peer: %s", peer.name)
 				tor.swarm = append(tor.swarm, peer)
 			case <-time.After(time.Second * 5):
 				// Unchoke interested peers
@@ -143,7 +143,7 @@ func (tor *Torrent) Start() {
 				// TODO: Implement optimistic unchoking algorithm
 				for _, peer := range tor.swarm {
 					if peer.GetPeerInterested() && peer.GetAmChoking() {
-						logger.Debug("Unchoking peer %s", peer.name)
+						logger.Debugf("Unchoking peer %s", peer.name)
 						peer.write <- &unchokeMessage{}
 						peer.SetAmChoking(false)
 					}
@@ -166,28 +166,28 @@ func (tor *Torrent) Start() {
 			}
 			switch msg := msg.(type) {
 			case *chokeMessage:
-				logger.Debug("Peer %s has choked us", peer.name)
+				logger.Debugf("Peer %s has choked us", peer.name)
 				peer.SetPeerChoking(true)
 			case *unchokeMessage:
-				logger.Debug("Peer %s has unchoked us", peer.name)
+				logger.Debugf("Peer %s has unchoked us", peer.name)
 				peer.SetPeerChoking(false)
 			case *interestedMessage:
-				logger.Debug("Peer %s has said it is interested", peer.name)
+				logger.Debugf("Peer %s has said it is interested", peer.name)
 				peer.SetPeerInterested(true)
 			//case *uninterestedMessage:
 			//	logger.Debug("Peer %s has said it is uninterested", peer.name)
 			case *haveMessage:
 				pieceIndex := int(msg.pieceIndex)
-				logger.Debug("Peer %s has piece %d", peer.name, pieceIndex)
+				logger.Debugf("Peer %s has piece %d", peer.name, pieceIndex)
 				if pieceIndex >= tor.meta.PieceCount {
-					logger.Debug("Peer %s sent an out of range have message")
+					logger.Debugf("Peer %s sent an out of range have message")
 					// TODO: Shutdown client
 					peer.Close()
 				}
 				peer.HasPiece(pieceIndex)
 				// TODO: Update swarmTally
 			case *bitfieldMessage:
-				logger.Debug("Peer %s has sent us its bitfield", peer.name)
+				logger.Debugf("Peer %s has sent us its bitfield", peer.name)
 				// Raw parsed bitfield has no actual length. Let's try to set it.
 				if err := msg.bitf.SetLength(tor.meta.PieceCount); err != nil {
 					logger.Error(err.Error())
@@ -199,30 +199,30 @@ func (tor *Torrent) Start() {
 				tor.swarmTally.AddBitfield(msg.bitf)
 			case *requestMessage:
 				if peer.GetAmChoking() || !tor.bitf.Get(int(msg.pieceIndex)) {
-					logger.Debug("Peer %s has asked for a block (%d, %d, %d), but we are rejecting them", peer.name, msg.pieceIndex, msg.blockOffset, msg.blockLength)
+					logger.Debugf("Peer %s has asked for a block (%d, %d, %d), but we are rejecting them", peer.name, msg.pieceIndex, msg.blockOffset, msg.blockLength)
 					// Add naughty points
 					break
 				}
-				logger.Debug("Peer %s has asked for a block (%d, %d, %d), going to fetch block", peer.name, msg.pieceIndex, msg.blockOffset, msg.blockLength)
+				logger.Debugf("Peer %s has asked for a block (%d, %d, %d), going to fetch block", peer.name, msg.pieceIndex, msg.blockOffset, msg.blockLength)
 				block, err := tor.fileStore.GetBlock(int(msg.pieceIndex), int64(msg.blockOffset), int64(msg.blockLength))
 				if err != nil {
 					logger.Error(err.Error())
 					peer.Close()
 					break
 				}
-				logger.Debug("Peer %s has asked for a block (%d, %d, %d), sending it to them", peer.name, msg.pieceIndex, msg.blockOffset, msg.blockLength)
+				logger.Debugf("Peer %s has asked for a block (%d, %d, %d), sending it to them", peer.name, msg.pieceIndex, msg.blockOffset, msg.blockLength)
 				peer.write <- &pieceMessage{
 					pieceIndex:  msg.pieceIndex,
 					blockOffset: msg.blockOffset,
 					data:        block,
 				}
 			case *pieceMessage:
-				logger.Debug("Piece message from %s", peer.name)
+				logger.Debugf("Piece message from %s", peer.name)
 				break
 			//case *cancelMessage:
 			//  logger.Debug("cancel message from %s", peer.name)
 			default:
-				logger.Debug("Peer %s sent unknown message: %s", peer.name, msg)
+				logger.Debugf("Peer %s sent unknown message: %s", peer.name, msg)
 			}
 		}
 	}()
@@ -253,7 +253,7 @@ func (t *Torrent) AddPeer(conn net.Conn, hs *handshake) {
 
 	// Send handshake
 	if err := newHandshake(t.InfoHash(), t.PeerId()).BinaryDump(conn); err != nil {
-		logger.Debug("%s Failed to send handshake to connection: %s", conn.RemoteAddr(), err)
+		logger.Debugf("%s Failed to send handshake to connection: %s", conn.RemoteAddr(), err)
 		conn.Close()
 		return
 	}
@@ -263,11 +263,11 @@ func (t *Torrent) AddPeer(conn net.Conn, hs *handshake) {
 	var err error
 	if hs == nil {
 		if hs, err = parseHandshake(conn); err != nil {
-			logger.Debug("%s Failed to parse incoming handshake: %s", conn.RemoteAddr(), err)
+			logger.Debugf("%s Failed to parse incoming handshake: %s", conn.RemoteAddr(), err)
 			conn.Close()
 			return
 		} else if !bytes.Equal(hs.infoHash, t.InfoHash()) {
-			logger.Debug("%s Infohash did not match for connection", conn.RemoteAddr())
+			logger.Debugf("%s Infohash did not match for connection", conn.RemoteAddr())
 			conn.Close()
 			return
 		}

@@ -19,6 +19,10 @@ func (sess *Session) Connect() (err error) {
 	return
 }
 
+func (sess *Session) Run() {
+	sess.listener.Listen()
+}
+
 func (sess *Session) Close() {
 
 	if sess.listener != nil {
