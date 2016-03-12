@@ -2,7 +2,6 @@ package libi2ptorrent
 
 import (
 	"bytes"
-	"encoding/base32"
 	"fmt"
 	"github.com/majestrate/i2p-tools/lib/i2p"
 	"github.com/majestrate/libi2ptorrent/bitfield"
@@ -12,7 +11,6 @@ import (
 	"github.com/op/go-logging"
 	"math/rand"
 	"net"
-	"strings"
 	"sync"
 	"time"
 )
@@ -23,11 +21,10 @@ const (
 	Seeding
 )
 
-var logger = logging.MustGetLogger("libtorrent")
+var logger = logging.MustGetLogger("torrent")
 
 type Torrent struct {
 	sam              i2p.StreamSession
-	listener         *Listener
 	meta             *metainfo.Metainfo
 	fileStore        *filestore.FileStore
 	config           *Config
@@ -76,21 +73,10 @@ func NewTorrent(m *metainfo.Metainfo, config *Config, bitf *bitfield.Bitfield) (
 	return
 }
 
-func (tor *Torrent) Connect() (err error) {
-
-	cfg := tor.config.I2P
-	session := strings.Trim(base32.StdEncoding.EncodeToString(tor.meta.InfoHash), "=")
-	session += strings.ToLower(session[:10])
-	session += fmt.Sprintf("-%d", rand.Int63())
-	logger.Info("connecting to i2p with session %s", session)
-	tor.sam, err = i2p.NewSessionEasy(cfg.Addr, "")
-	if err == nil {
-		if err == nil {
-			tor.listener = NewListener(tor.sam)
-			tor.listener.AddTorrent(tor)
-		}
-	}
-	return
+// attach torrent to an existing session
+func (tor *Torrent) Attach(s *Session) {
+	tor.sam = s.sam
+	s.listener.AddTorrent(tor)
 }
 
 func (tor *Torrent) Validate() (bitf *bitfield.Bitfield, err error) {
@@ -100,31 +86,10 @@ func (tor *Torrent) Validate() (bitf *bitfield.Bitfield, err error) {
 }
 
 func (tor *Torrent) Close() {
-	if tor.listener != nil {
-		tor.listener.Close()
-		tor.listener = nil
-	}
-	if tor.sam != nil {
-		tor.sam.Close()
-		tor.sam = nil
-	}
 }
 
 func (tor *Torrent) Start() {
-	var err error
-	for {
-		err = tor.Connect()
-		if err == nil {
-			break
-		} else {
-			// failed to connect
-			logger.Error("Failed to connect to i2p router: %s", err)
-			tor.Close()
-			time.Sleep(time.Second)
-		}
-	}
 	logger.Info("Torrent starting: %s", tor.meta.Name)
-
 	// Set initial state
 	tor.stateLock.Lock()
 	if tor.bitf.SumTrue() == tor.bitf.Length() {
@@ -133,16 +98,6 @@ func (tor *Torrent) Start() {
 		tor.state = Leeching
 	}
 	tor.stateLock.Unlock()
-
-	// start listener
-	go func() {
-		err := tor.listener.Listen()
-		if err != nil {
-			logger.Error("failed to listen: %s", err.Error())
-			tor.Close()
-		}
-	}()
-
 	// Create trackers
 	for _, tkr := range tor.meta.AnnounceList {
 		tkr, err := tracker.NewTracker(tor.sam, tkr, tor, tor.incomingPeerAddr)
@@ -162,7 +117,7 @@ func (tor *Torrent) Start() {
 			//if tor.state != Leeching {
 			//  continue
 			//}
-			logger.Info("connecting out to %s", peerAddr)
+			logger.Debug("connecting out to %s", peerAddr)
 			go func() {
 				conn, err := tor.sam.Dial("tcp", peerAddr.String()+":0")
 				if err == nil {

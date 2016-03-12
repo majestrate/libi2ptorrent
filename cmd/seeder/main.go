@@ -23,6 +23,7 @@ func init() {
 
 func main() {
 	flag.Parse()
+	logging.SetLevel(logging.INFO, "torrent")
 	var err error
 	var cfg *libtorrent.Config
 	if cfg_fname == "" {
@@ -30,17 +31,20 @@ func main() {
 	} else {
 		cfg, err = libtorrent.LoadConfig(cfg_fname)
 		if err != nil {
-			logger.Error("failed to load config: %s", err.Error())
+			logger.Errorf("failed to load config: %s", err.Error())
 			return
 		}
+	}
+	if cfg.Debug {
+		logging.SetLevel(logging.DEBUG, "torrent")
 	}
 	logger.Info("starting up bulk seeder")
 	ls, err := cfg.ListTorrents()
 	if err != nil {
-		logger.Error("cannot read torrent list: %s", err.Error())
+		logger.Errorf("cannot read torrent list: %s", err.Error())
 		return
 	}
-	logger.Info("loading %d torrents", len(ls))
+	logger.Infof("loading %d torrents", len(ls))
 	var metas []*metainfo.Metainfo
 	for _, fname := range ls {
 		f, err := os.Open(fname)
@@ -48,40 +52,48 @@ func main() {
 			meta, err := metainfo.ParseMetainfo(f)
 			f.Close()
 			if err == nil {
-				logger.Info("loaded torrent %s", meta.Name)
+				logger.Infof("loaded torrent %s", meta.Name)
 				metas = append(metas, meta)
 			} else {
-				logger.Info("failed to load torrent file %s", fname)
+				logger.Infof("failed to load torrent file %s", fname)
 			}
 		}
 	}
+	var sessions []*libtorrent.Session
+	// open N sessions
+	num := cfg.NumSeeders
+	for num > 0 {
+		logger.Infof("Creating session %d", num)
+		s := libtorrent.NewSession(cfg)
+		err = s.Connect()
+		if err != nil {
+			logger.Errorf("Error creating session %d: %s", num, err.Error())
+			return
+		}
+		sessions = append(sessions, s)
+		num--
+	}
+
 	for _, meta := range metas {
-		go func(num int, meta *metainfo.Metainfo) {
-			logger.Info("checking %s", meta.Name)
+		go func(meta *metainfo.Metainfo, sessions []*libtorrent.Session) {
+			logger.Infof("checking %s", meta.Name)
 			t, err := libtorrent.NewTorrent(meta, cfg, nil)
 			if err == nil {
-				bitf, err := t.Validate()
+				_, err := t.Validate()
 				if err == nil {
-					t.Start()
-					// start more
-					for num > 0 {
-						// spawn more
-						t, err = libtorrent.NewTorrent(meta, cfg, bitf)
-						if err == nil {
-							logger.Info("starting worker %d for %s", num, meta.Name)
-							go func() {
-								t.Start()
-							}()
-						} else {
-							logger.Error("Failed to start worker number %d: %s", num, err.Error())
-						}
-						num--
+					logger.Infof("check success for %s", meta.Name)
+					// attach this torrent to all sessions
+					for _, sess := range sessions {
+						t.Attach(sess)
 					}
+					t.Start()
+				} else {
+					logger.Errorf("failed to valid data for torrent %s: %s", meta.Name, err.Error())
 				}
 			} else {
-				logger.Error("failed to start torrent %s: %s", meta.Name, err.Error())
+				logger.Errorf("failed to start torrent %s: %s", meta.Name, err.Error())
 			}
-		}(cfg.NumSeeders, meta)
+		}(meta, sessions)
 	}
 	for {
 		time.Sleep(time.Second)

@@ -15,6 +15,7 @@ type Config struct {
 	RootDirectory string
 	NumSeeders    int
 	I2P           I2PConfig
+	Debug         bool
 }
 
 func (cfg *Config) ListTorrents() (torrentFiles []string, err error) {
